@@ -1,0 +1,2 @@
+theme = "apple-classic-dark"   # themes/apple-classic-dark.toml in this folder
+editor = "nvim"
