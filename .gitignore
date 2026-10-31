@@ -1,3 +1,5 @@
 # secrets live in the live config dir, which is a symlink into this repo
 config/zsh/env/99-secrets.zsh
 *.bak
+__pycache__/
+*.pyc

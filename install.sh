@@ -13,7 +13,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGES=(preflight deps link secrets bash_cleanup shell wsl nvim verify)
+STAGES=(preflight deps link theme secrets bash_cleanup shell wsl nvim verify)
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -23,7 +23,7 @@ BIN="$HOME/.local/bin"
 BACKUP="$XDG_STATE_HOME/dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
 # repo path (relative to config/)   ->   target under $XDG_CONFIG_HOME
-CONFIG_LINKS=(zsh tmux nvim leaf starship.toml)
+CONFIG_LINKS=(zsh tmux nvim leaf theme)
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 DRY=0; ONLY=""; SKIP=""
@@ -89,6 +89,8 @@ stage_link() {
   for item in "${CONFIG_LINKS[@]}"; do
     link "$REPO/config/$item" "$XDG_CONFIG_HOME/$item"
   done
+  # the `theme` switcher on PATH
+  link "$XDG_CONFIG_HOME/theme/theme" "$BIN/theme"
   # ~/.zshenv is the one file zsh reads from $HOME. It points zsh at ~/.config/zsh.
   link "$REPO/home/zshenv" "$HOME/.zshenv"
 
@@ -96,6 +98,17 @@ stage_link() {
   run mkdir -p "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME" \
                "$XDG_STATE_HOME/zsh" "$XDG_CACHE_HOME/zsh" \
                "$XDG_CONFIG_HOME/npm" "$HOME/.local/langs/npm_global"
+}
+
+stage_theme() {
+  local t="$XDG_CONFIG_HOME/theme/theme"
+  [[ -x $t ]] || { warn "theme script not linked yet"; return; }
+  # keep the theme you already chose; first run gets the default
+  if [[ -r $XDG_STATE_HOME/theme/current ]]; then
+    ok "theme: $("$t" --current) (unchanged; run 'theme' to list, 'theme <name>' to switch)"
+  else
+    run "$t" apple-classic-dark
+  fi
 }
 
 stage_secrets() {

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Switch the colour theme of the whole terminal setup in one command.
+#
+#   theme                 list themes, mark the current one
+#   theme <name>          apply it (tmux, prompt, fzf, leaf, nvim)
+#   theme --current       print the current name (used by scripts)
+#
+# What it touches (all under $XDG_STATE_HOME/theme, never your repo):
+#   starship.toml   prompt  (STARSHIP_CONFIG, set in env/80-theme.zsh)
+#   fzf.zsh         fzf colours (sourced by env/80-theme.zsh)
+#   tmux.conf       tmux colours (sourced by tmux conf.d/90-theme.conf; reloaded live)
+#   current         the name; read by nvim on start and by the `leaf` wrapper
+#
+# Windows Terminal has its own colour scheme: pick the matching one there.
+# Written for bash 3.2 (macOS).
+
+set -eo pipefail
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/theme"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/theme"
+DEFAULT="apple-classic-dark"
+
+themes() { for d in "$CONF"/themes/*/; do basename "$d"; done; }
+current() { [[ -r $STATE/current ]] && tr -d '[:space:]' < "$STATE/current" || echo "$DEFAULT"; }
+
+list() {
+  local cur t; cur="$(current)"
+  for t in $(themes); do
+    if [[ $t == "$cur" ]]; then printf '* %s\n' "$t"; else printf '  %s\n' "$t"; fi
+  done
+}
+
+apply() {
+  local name="$1" src="$CONF/themes/$1"
+  [[ -d $src ]] || { echo "unknown theme: $name" >&2; echo "available:" >&2; themes | sed 's/^/  /' >&2; exit 1; }
+  mkdir -p "$STATE"
+
+  # write to temp files then move, so a shell starting mid-switch never sees half a file
+  cp "$src/tmux.conf" "$STATE/tmux.conf.tmp" && mv "$STATE/tmux.conf.tmp" "$STATE/tmux.conf"
+  cp "$src/fzf.zsh"   "$STATE/fzf.zsh.tmp"   && mv "$STATE/fzf.zsh.tmp"   "$STATE/fzf.zsh"
+  # starship: top-level keys first, then the layout tables, then this theme's palette table
+  { printf 'palette = "%s"\n' "$name"; cat "$CONF/starship-base.toml"; echo; cat "$src/starship-palette.toml"; } \
+    > "$STATE/starship.toml.tmp" && mv "$STATE/starship.toml.tmp" "$STATE/starship.toml"
+  printf '%s\n' "$name" > "$STATE/current"
+
+  # running tmux server: recolour it now
+  if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
+    tmux source-file "$STATE/tmux.conf" && echo "tmux: recoloured"
+  fi
+  echo "theme: $name"
+  echo "  new shells pick up the prompt and fzf colours; in this one run: exec zsh"
+  echo "  nvim: restart it (or :colorscheme $name)"
+  echo "  Windows Terminal: choose the matching colour scheme for your profile"
+}
+
+case "${1:-}" in
+  "")          list ;;
+  --current)   current ;;
+  -h|--help)   sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)           apply "$1" ;;
+esac

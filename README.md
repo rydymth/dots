@@ -27,11 +27,33 @@ wsl --terminate FedoraLinux-43
 | `config/tmux/` | `~/.config/tmux` | `tmux.conf` loads `conf.d/*.conf` in order |
 | `config/nvim/` | `~/.config/nvim` | lazy.nvim config, one file per plugin group |
 | `config/leaf/` | `~/.config/leaf` | leaf markdown viewer: `config.toml` + `themes/apple-classic-dark.toml` |
-| `config/starship.toml` | `~/.config/starship.toml` | prompt |
+| `config/theme/` | `~/.config/theme` | the `theme` switcher, starship prompt layout, generated per-theme files |
 | `system/` | `/etc/...` (copied, needs sudo) | WSL NetworkManager fix |
 | `secrets.template.zsh` | `~/.config/zsh/env/99-secrets.zsh` | copied once, never overwritten |
 
 Files are **symlinked**, so editing `~/.config/zsh/aliases.zsh` edits the repo. Commit from here.
+
+## Themes
+
+Three themes, one command:
+
+| Name | Look |
+|---|---|
+| `apple-classic-dark` | the original pastel dark (default) |
+| `powershell-light` | light, built around the Windows PowerShell navy `#012456` |
+| `sequoia-light` | macOS Sequoia: white, system-blue accent, multi-colour syntax |
+
+```sh
+theme                  # list, * marks the current one
+theme sequoia-light    # tmux recolours live; new shells get prompt + fzf; nvim on next start
+```
+
+It covers tmux, the starship prompt, fzf, leaf and Neovim (a running nvim follows `:colorscheme <name>`).
+Windows Terminal has its own scheme list: import `windows/terminal-schemes.json` and pick the matching one.
+
+All colours live in `tools/palettes.py`. After editing it run `python3 tools/build.py`, which regenerates every
+per-app file (`--check` fails if they are stale). It first runs `tools/contrast.py`: a light theme only builds if
+all its text colours reach WCAG AA (4.5:1) on every background they appear on. The dark theme is reported, not enforced.
 
 ## Stages
 
@@ -42,6 +64,7 @@ Files are **symlinked**, so editing `~/.config/zsh/aliases.zsh` edits the repo. 
 | `preflight` | checks you are a normal user with sudo; prints the OS |
 | `deps` | runs `deps.sh` (see below) |
 | `link` | symlinks the config; existing files go to a backup folder |
+| `theme` | applies the default theme on first run (keeps your choice after that) |
 | `secrets` | creates `99-secrets.zsh` (mode 600) from the template if absent |
 | `bash_cleanup` | Linux only: moves `.bashrc`, `.bash_profile`, `.profile`... to the backup folder |
 | `shell` | Linux only: `sudo chsh -s zsh` (macOS already uses zsh) |
